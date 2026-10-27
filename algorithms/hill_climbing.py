@@ -1,8 +1,3 @@
-"""
-algorithms/hill_climbing.py
-Hill Climbing search with sideways move limits and random restarts.
-"""
-
 from typing import Tuple
 from algorithms.base import LocalSearchSolver
 from core.state import State
@@ -17,17 +12,51 @@ class HillClimbingSolver(LocalSearchSolver):
         self.max_restarts: int = self.params.get("max_restarts", 5)
 
     def solve(self) -> Tuple[State, float]:
-        """
-        Executes Hill Climbing optimization.
 
-        Guidelines:
-        - Search through the neighborhood greedily for candidates that minimize total travel time.
-        - Handle flat local maxima / shoulders by allowing up to `max_sideways` non-improving steps.
-        - Apply up to `max_restarts` to explore different starting basins.
-        - Track the best objective cost seen at each major step in self.history.
+        best = self.problem.generate_initial_state()
+        best_cost = self.problem.evaluate(best)
 
-        Prohibited:
-        - Looping indefinitely on flat plateaus.
-        """
-        # TODO: Implement Hill Climbing with sideways moves and restarts
-        raise NotImplementedError("Implement solve() in algorithms/hill_climbing.py")
+        self.history = [best_cost]
+
+        for restart in range(self.max_restarts + 1):
+
+            if restart == 0:
+                current = best
+            else:
+                current = self.problem.generate_initial_state()
+
+            current_cost = self.problem.evaluate(current)
+            sideways = 0
+
+            while True:
+                neighbors = get_neighbors(current, self.problem)
+
+                if not neighbors:
+                    break
+
+                next_state = min(
+                    neighbors,
+                    key=lambda state: self.problem.evaluate(state)
+                )
+                next_cost = self.problem.evaluate(next_state)
+
+                if next_cost < current_cost:
+                    current = next_state
+                    current_cost = next_cost
+                    sideways = 0
+
+                elif next_cost == current_cost and sideways < self.max_sideways:
+                    current = next_state
+                    current_cost = next_cost
+                    sideways += 1
+
+                else:
+                    break
+
+                if current_cost < best_cost:
+                    best = current
+                    best_cost = current_cost
+
+                self.history.append(best_cost)
+
+        return best, best_cost
