@@ -1,8 +1,4 @@
-"""
-algorithms/genetic_algorithm.py
-Population-based optimization using selection, recombination, and mutation.
-"""
-
+import random
 from typing import Tuple
 from algorithms.base import LocalSearchSolver
 from core.state import State
@@ -13,26 +9,77 @@ from algorithms.operators import get_neighbors, crossover
 class GeneticAlgorithmSolver(LocalSearchSolver):
     def __init__(self, problem: CommuteProblem, **kwargs):
         super().__init__(problem, **kwargs)
-        self.population_size: int = self.params.get("population_size", 30)
-        self.generations: int = self.params.get("generations", 100)
-        self.crossover_rate: float = self.params.get("crossover_rate", 0.8)
-        self.mutation_rate: float = self.params.get("mutation_rate", 0.2)
-        self.elitism: int = self.params.get("elitism", 2)
+
+        self.population_size = self.params.get("population_size", 30)
+        self.generations = self.params.get("generations", 100)
+        self.crossover_rate = self.params.get("crossover_rate", 0.8)
+        self.mutation_rate = self.params.get("mutation_rate", 0.2)
+        self.elitism = self.params.get("elitism", 2)
 
     def solve(self) -> Tuple[State, float]:
-        """
-        Executes Genetic Algorithm optimization.
 
-        Guidelines:
-        - Initialize a population of valid candidate solutions.
-        - Design a fitness metric suitable for minimizing commute travel time (lower cost -> higher fitness).
-        - Use selection operators (such as tournament or roulette selection) to pick parents.
-        - Pair parents to produce offspring via `crossover()`, and apply stochastic mutation.
-        - Preserve the top candidates across generations if using elitism.
-        - Track best population performance per generation in self.history.
+        population = []
 
-        Encouraged:
-        - Experimenting with population size, selection pressure, and operator rates to balance exploration vs. exploitation.
-        """
-        # TODO: Implement Genetic Algorithm
-        raise NotImplementedError("Implement solve() in algorithms/genetic_algorithm.py")
+        for i in range(self.population_size):
+            state = self.problem.generate_initial_state()
+            population.append(state)
+
+        best = min(population, key=lambda state: self.problem.evaluate(state))
+        best_cost = self.problem.evaluate(best)
+
+        self.history = [best_cost]
+
+        for generation in range(self.generations):
+
+            population.sort(key=lambda state: self.problem.evaluate(state))
+
+            new_population = population[:self.elitism]
+
+            while len(new_population) < self.population_size:
+
+                candidates = random.sample(
+                    population,
+                    min(3, len(population))
+                )
+                parent1 = min(
+                    candidates,
+                    key=lambda state: self.problem.evaluate(state)
+                )
+
+                candidates = random.sample(
+                    population,
+                    min(3, len(population))
+                )
+                parent2 = min(
+                    candidates,
+                    key=lambda state: self.problem.evaluate(state)
+                )
+
+                if random.random() < self.crossover_rate:
+                    child = crossover(parent1, parent2, self.problem)
+                else:
+                    child = parent1
+
+                if random.random() < self.mutation_rate:
+                    neighbors = get_neighbors(child, self.problem)
+
+                    if neighbors:
+                        child = random.choice(neighbors)
+
+                new_population.append(child)
+
+            population = new_population
+
+            current_best = min(
+                population,
+                key=lambda state: self.problem.evaluate(state)
+            )
+            current_cost = self.problem.evaluate(current_best)
+
+            if current_cost < best_cost:
+                best = current_best
+                best_cost = current_cost
+
+            self.history.append(best_cost)
+
+        return best, best_cost
